@@ -407,6 +407,37 @@
         if (attr.dndDrop) {
           data = invokeCallback(attr.dndDrop, event, dropEffect, itemType, index, data);
           if (!data) return stopDragover();
+
+          // The drop is definitely going to happen now, store the dropEffect.
+          dndState.dropEffect = dropEffect;
+          if (!ignoreDataTransfer) {
+            event.dataTransfer.dropEffect = dropEffect;
+          }
+
+          // Check for Promise
+          if ((typeof data === 'object' || typeof data === 'function') && typeof data.then === 'function') {
+            data.then(function(result) {
+              // Repeat the end of function to async
+
+              if (!result) return stopDragover();
+
+              // Insert the object into the array, unless dnd-drop took care of that (returned true).
+              if (result !== true) {
+                scope.$apply(function() {
+                  scope.$eval(attr.dndList).splice(index, 0, result);
+                });
+              }
+              invokeCallback(attr.dndInserted, event, dropEffect, itemType, index, result);
+
+              return stopDragover();
+            })
+            .catch(function() {
+              return stopDragover();
+            })
+
+            event.stopPropagation();
+            return false;
+          }
         }
 
         // The drop is definitely going to happen now, store the dropEffect.
